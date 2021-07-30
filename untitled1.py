@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 import pandas as pd
 from pulp import *
 import re,csv
@@ -147,8 +141,9 @@ app.add_middleware(
 )
 
 
-
-def here(dictionary):	
+@app.post("/items/")
+async def create_item(dictionary: total):
+# In[4]:
 	toCSV=dictionary.total_player
 	df=pd.DataFrame([t.__dict__ for t in toCSV])
 	Legacy_stacking=dictionary.legacy
@@ -191,9 +186,9 @@ def here(dictionary):
 		teams_dict[te[i]].append(i)
 	ar=[i.name for i in dictionary.locked_player]
 	for i in range(num):
-		players.extend(player[j]+'@'+str(i) for j in range(len(player)))
-		teams_lineup.extend(teams_unique[j]+'@'+str(i) for j in range(len(teams_unique)))
-		arr.extend([ar[j]+'@'+str(i) for j in range(len(ar))])
+		players.extend(player[j]+str(i) for j in range(len(player)))
+		teams_lineup.extend(teams_unique[j]+str(i) for j in range(len(teams_unique)))
+		arr.extend([ar[j]+str(i) for j in range(len(ar))])
 	prob = LpProblem("maximise the projected points",LpMaximize)
 	salary={}
 	pos={}
@@ -204,12 +199,12 @@ def here(dictionary):
 	l=0
 	m=0
 	for i in players:
-		salary[i]=sal[i[:-len(str(l))-1]]
-		proj[i]=project[i[:-len(str(l))-1]]
-		fp[i]=fp_sc[i[:-len(str(l))-1]]
-		pos[i]=pos_org[i[:-len(str(l))-1]]
-		team[i]=te[i[:-len(str(l))-1]]
-		final_fp[i]=final_fpts[i[:-len(str(l))-1]]
+		salary[i]=sal[i[:-len(str(l))]]
+		proj[i]=project[i[:-len(str(l))]]
+		fp[i]=fp_sc[i[:-len(str(l))]]
+		pos[i]=pos_org[i[:-len(str(l))]]
+		team[i]=te[i[:-len(str(l))]]
+		final_fp[i]=final_fpts[i[:-len(str(l))]]
 		m+=1
 		if(m%(len(player))==0) :
 		    l=l+1
@@ -232,28 +227,28 @@ def here(dictionary):
 	    team_player=te[i.player]
 	    person=i.player
 	    for j in range(ans,ans+i.min_lineups):
-	        prob += lpSum(teams_vars1[ii+'@'+str(j)] for ii in teams_unique) >= flag[0]
-	        prob += lpSum(teams_vars2[ii+'@'+str(j)] for ii in teams_unique) >= flag[1]
-	        prob += lpSum(teams_vars3[ii+'@'+str(j)] for ii in teams_unique) >= flag[2]
-	        prob += lpSum(teams_vars4[ii+'@'+str(j)] for ii in teams_unique) >= flag[3]
-	        prob += lpSum(teams_vars5[ii+'@'+str(j)] for ii in teams_unique) >= flag[4]
+	        prob += lpSum(teams_vars1[ii+str(j)] for ii in teams_unique) >= flag[0]
+	        prob += lpSum(teams_vars2[ii+str(j)] for ii in teams_unique) >= flag[1]
+	        prob += lpSum(teams_vars3[ii+str(j)] for ii in teams_unique) >= flag[2]
+	        prob += lpSum(teams_vars4[ii+str(j)] for ii in teams_unique) >= flag[3]
+	        prob += lpSum(teams_vars5[ii+str(j)] for ii in teams_unique) >= flag[4]
 	        for k in teams_unique:
-	            prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in teams_dict[k] if pos_org[ii]=='RB') >= 1 - (1-teams_vars1[k+'@'+str(j)])*5000
-	            prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in teams_dict[opp[k]] if (pos_org[ii]=='WR' or pos_org[ii]=='TE')) >= 1 - (1-teams_vars1[k+'@'+str(j)])*5000
-	            prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in teams_dict[opp[k]] if (pos_org[ii]=='WR' or pos_org[ii]=='TE')) >= 1 - (1-teams_vars2[k+'@'+str(j)])*5000
-	            prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in teams_dict[k] if (pos_org[ii]=='WR')) >= 1 - (1-teams_vars2[k+'@'+str(j)])*5000
-	            prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in teams_dict[k] if pos_org[ii]=='RB') >= 1 - (1-teams_vars3[k+'@'+str(j)])*5000
-	            prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in teams_dict[k] if (pos_org[ii]=='WR')) >= 1 - (1-teams_vars3[k+'@'+str(j)])*5000
-	            prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in teams_dict[k] if pos_org[ii]=='RB') >= 1 - (1-teams_vars4[k+'@'+str(j)])*5000
-	            prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in teams_dict[k] if (pos_org[ii]=='DEF')) >= 1 - (1-teams_vars4[k+'@'+str(j)])*5000
-	            prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in teams_dict[k] if (pos_org[ii]=='WR' or pos_org[ii]=='TE')) >= 2 - (1-teams_vars5[k+'@'+str(j)])*5000
-	        prob += select[i.player+'@'+str(j)] == 1
-	        prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in teams_dict[team_player] if(pos_org[ii]=='WR' or pos_org[ii]=='RB' or pos_org[ii]=='TE')) >= (i.team_constraint).No_less_than
-	        prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in teams_dict[team_player] if(pos_org[ii]=='WR' or pos_org[ii]=='RB' or pos_org[ii]=='TE')) <= (i.team_constraint).No_more_than
+	            prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in teams_dict[k] if pos_org[ii]=='RB') >= 1 - (1-teams_vars1[k+str(j)])*5000
+	            prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in teams_dict[opp[k]] if (pos_org[ii]=='WR' or pos_org[ii]=='TE')) >= 1 - (1-teams_vars1[k+str(j)])*5000
+	            prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in teams_dict[opp[k]] if (pos_org[ii]=='WR' or pos_org[ii]=='TE')) >= 1 - (1-teams_vars2[k+str(j)])*5000
+	            prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in teams_dict[k] if (pos_org[ii]=='WR')) >= 1 - (1-teams_vars2[k+str(j)])*5000
+	            prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in teams_dict[k] if pos_org[ii]=='RB') >= 1 - (1-teams_vars3[k+str(j)])*5000
+	            prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in teams_dict[k] if (pos_org[ii]=='WR')) >= 1 - (1-teams_vars3[k+str(j)])*5000
+	            prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in teams_dict[k] if pos_org[ii]=='RB') >= 1 - (1-teams_vars4[k+str(j)])*5000
+	            prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in teams_dict[k] if (pos_org[ii]=='DEF')) >= 1 - (1-teams_vars4[k+str(j)])*5000
+	            prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in teams_dict[k] if (pos_org[ii]=='WR' or pos_org[ii]=='TE')) >= 2 - (1-teams_vars5[k+str(j)])*5000
+	        prob += select[i.player+str(j)] == 1
+	        prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in teams_dict[team_player] if(pos_org[ii]=='WR' or pos_org[ii]=='RB' or pos_org[ii]=='TE')) >= (i.team_constraint).No_less_than
+	        prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in teams_dict[team_player] if(pos_org[ii]=='WR' or pos_org[ii]=='RB' or pos_org[ii]=='TE')) <= (i.team_constraint).No_more_than
 	        if(i.game==1):
 	            opposite_team=opp[team_player]
-	            prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in teams_dict[opposite_team] if(pos_org[ii]=='WR' or pos_org[ii]=='RB' or pos_org[ii]=='TE')) >= (i.opp_team_constraint).No_less_than
-	            prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in teams_dict[opposite_team] if(pos_org[ii]=='WR' or pos_org[ii]=='RB' or pos_org[ii]=='TE')) <= (i.opp_team_constraint).No_more_than
+	            prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in teams_dict[opposite_team] if(pos_org[ii]=='WR' or pos_org[ii]=='RB' or pos_org[ii]=='TE')) >= (i.opp_team_constraint).No_less_than
+	            prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in teams_dict[opposite_team] if(pos_org[ii]=='WR' or pos_org[ii]=='RB' or pos_org[ii]=='TE')) <= (i.opp_team_constraint).No_more_than
 	    ans=ans+i.min_lineups
 	    Legacy_stacking=[]
 	req = LpVariable.dicts("number",player,cat='Binary')
@@ -267,31 +262,20 @@ def here(dictionary):
 	    n=0
 	lineups=[]
 	for i in range(n):
-	    lineups.extend([ii+'@'+str(i) for ii in line])
-	forcing_flex=optimizer_panel.forcing_flex
-	if(forcing_flex==True):
-	    for j in range(1,num):
-	        for i in player:
-	            prob += select[i+'@'+str(j-1)] >= 1-300*(1-flex[i+'@'+str(j)])
-	uniqueness=optimizer_panel.uniqueness
-	print("unique=",uniqueness)
-	prob += lpSum(req[i] for i in player) == uniqueness
-	for i in player :
-		prob += (lpSum(select[i+'@'+str(j)]+flex[i+'@'+str(j)] for j in range(num))) <= 1+(1-req[i])*5000
-		prob += (lpSum(select[i+'@'+str(j)]+flex[i+'@'+str(j)] for j in range(num))) >= 1-(1-req[i])*5000
+	    lineups.extend([ii+'*'+str(i) for ii in line])
 	lineup_vars=LpVariable.dicts("num",lineups,cat='Binary')
 	for i in range(n):
 	    num_here=stack[i].num_line_ups
-	    prob += lpSum(lineup_vars[ii+'@'+str(i)] for ii in line) >= num_here
+	    prob += lpSum(lineup_vars[ii+str(i)] for ii in line) >= num_here
 	    for j in range(num):
 	        if(stack[i].items==1):
-	            prob += lpSum(select[here+'@'+str(j)]+flex[here+'@'+str(j)] for here in stack[i].player1) <= stack[i].maxi1+(1-lineup_vars[str(j)+'@'+str(i)])*5000
-	            prob += lpSum(select[here+'@'+str(j)]+flex[here+'@'+str(j)] for here in stack[i].player1) >= stack[i].mini1*lineup_vars[str(j)+'@'+str(i)]
+	            prob += lpSum(select[here+str(j)]+flex[here+str(j)] for here in stack[i].player1) <= stack[i].maxi1+(1-lineup_vars[str(j)+'*'+str(i)])*5000
+	            prob += lpSum(select[here+str(j)]+flex[here+str(j)] for here in stack[i].player1) >= stack[i].mini1*lineup_vars[str(j)+'*'+str(i)]
 	        if(stack[i].items==2):
-	            prob += lpSum(select[here+'@'+str(j)]+flex[here+'@'+str(j)] for here in stack[i].player1) <= stack[i].maxi1+(1-lineup_vars[str(j)+'@'+str(i)])*5000
-	            prob += lpSum(select[here+'@'+str(j)]+flex[here+'@'+str(j)] for here in stack[i].player1) >= stack[i].mini1*lineup_vars[str(j)+'@'+str(i)]
-	            prob += lpSum(select[here+'@'+str(j)]+flex[here+'@'+str(j)] for here in stack[i].player2) <= stack[i].maxi2+(1-lineup_vars[str(j)+'@'+str(i)])*5000
-	            prob += lpSum(select[here+'@'+str(j)]+flex[here+'@'+str(j)] for here in stack[i].player2) >= stack[i].mini2*lineup_vars[str(j)+'@'+str(i)]
+	            prob += lpSum(select[here+str(j)]+flex[here+str(j)] for here in stack[i].player1) <= stack[i].maxi1+(1-lineup_vars[str(j)+'*'+str(i)])*5000
+	            prob += lpSum(select[here+str(j)]+flex[here+str(j)] for here in stack[i].player1) >= stack[i].mini1*lineup_vars[str(j)+'*'+str(i)]
+	            prob += lpSum(select[here+str(j)]+flex[here+str(j)] for here in stack[i].player2) <= stack[i].maxi2+(1-lineup_vars[str(j)+'*'+str(i)])*5000
+	            prob += lpSum(select[here+str(j)]+flex[here+str(j)] for here in stack[i].player2) >= stack[i].mini2*lineup_vars[str(j)+'*'+str(i)]
 	team_arr=dictionary.perTeam
 	pos_req={'QB':1,'WR':3,'TE':1,'RB':2,'DEF':1}
 	given=optimizer_panel.optimisation
@@ -302,59 +286,59 @@ def here(dictionary):
 	else:
 	    prob += lpSum(final_fp[i]*(select[i]+flex[i]) for i in players)
 	for j in range(num):
-	    prob += lpSum(teams_vars[i+'@'+str(j)] for i in teams_unique) >= universal
-	    prob += lpSum(select[i+'@'+str(j)] for i in player) == 8
-	    prob += lpSum(flex[i+'@'+str(j)] for i in player) == 1
-	    prob += lpSum(flex[i+'@'+str(j)] for i in player if(pos_org[i]=='QB' or pos_org[i]=='DEF')) == 0
+	    prob += lpSum(teams_vars[i+str(j)] for i in teams_unique) >= universal
+	    prob += lpSum(select[i+str(j)] for i in player) == 8
+	    prob += lpSum(flex[i+str(j)] for i in player) == 1
+	    prob += lpSum(flex[i+str(j)] for i in player if(pos_org[i]=='QB' or pos_org[i]=='DEF')) == 0
 	    for i in player :
-	        prob += lpSum(flex[i+'@'+str(j)]+select[i+'@'+str(j)]) <= 1
-	    prob += lpSum(select[i+'@'+str(j)]+flex[i+'@'+str(j)] for i in ar) == len(ar)
-	    prob += lpSum(select[i+'@'+str(j)]+flex[i+'@'+str(j)] for i in rem) == 0
-	    prob += lpSum((select[i+'@'+str(j)]+flex[i+'@'+str(j)])*sal[i] for i in player) <= sal_cap[1]
-	    prob += lpSum((select[i+'@'+str(j)]+flex[i+'@'+str(j)])*sal[i] for i in player) >= sal_cap[0]
-	    su=lpSum(select[i+'@'+str(j)]+flex[i+'@'+str(j)] for i in player if(sal[i]<=sal_range[1] and sal[i]>=sal_range[0]))
+	        prob += lpSum(flex[i+str(j)]+select[i+str(j)]) <= 1
+	    prob += lpSum(select[i+str(j)]+flex[i+str(j)] for i in ar) == len(ar)
+	    prob += lpSum(select[i+str(j)]+flex[i+str(j)] for i in rem) == 0
+	    prob += lpSum((select[i+str(j)]+flex[i+str(j)])*sal[i] for i in player) <= sal_cap[1]
+	    prob += lpSum((select[i+str(j)]+flex[i+str(j)])*sal[i] for i in player) >= sal_cap[0]
+	    su=lpSum(select[i+str(j)]+flex[i+str(j)] for i in player if(sal[i]<=sal_range[1] and sal[i]>=sal_range[0]))
 	    prob += su == 9
-	    su=lpSum(select[i+'@'+str(j)]+flex[i+'@'+str(j)] for i in player if(fp_sc[i]<=fp_range[1] and fp_sc[i]>=fp_range[0]))
+	    su=lpSum(select[i+str(j)]+flex[i+str(j)] for i in player if(fp_sc[i]<=fp_range[1] and fp_sc[i]>=fp_range[0]))
 	    prob += su == 9
 	    for teams in team_arr:
 	        if(teams.type1=='atleast'):
-	            prob += lpSum(select[i+'@'+str(j)]+flex[i+'@'+str(j)] for i in player if(te[i]==teams.team)) >= teams.num_of_players
+	            prob += lpSum(select[i+str(j)]+flex[i+str(j)] for i in player if(te[i]==teams.team)) >= teams.num_of_players
 	        elif(teams.type1=='atmost'):
-	            prob += lpSum(select[i+'@'+str(j)]+flex[i+'@'+str(j)] for i in player if(te[i]==teams.team)) <= teams.num_of_players
+	            prob += lpSum(select[i+str(j)]+flex[i+str(j)] for i in player if(te[i]==teams.team)) <= teams.num_of_players
 	        else:
-	            prob += lpSum(select[i+'@'+str(j)]+flex[i+'@'+str(j)] for i in player if(te[i]==teams.team)) == teams.num_of_players
+	            prob += lpSum(select[i+str(j)]+flex[i+str(j)] for i in player if(te[i]==teams.team)) == teams.num_of_players
 	    for i,jj in pos_req.items():
-	        prob += lpSum(select[ii+'@'+str(j)] for ii in player if(pos_org[ii]==i)) == jj
-	    prob += lpSum((select[i+'@'+str(j)]+flex[i+'@'+str(j)])*own[i] for i in player) <= ownership_cap[1]
-	    prob += lpSum((select[i+'@'+str(j)]+flex[i+'@'+str(j)])*own[i] for i in player) >= ownership_cap[0]
+	        prob += lpSum(select[ii+str(j)] for ii in player if(pos_org[ii]==i)) == jj
+	    prob += lpSum((select[i+str(j)]+flex[i+str(j)])*own[i] for i in player) <= ownership_cap[1]
+	    prob += lpSum((select[i+str(j)]+flex[i+str(j)])*own[i] for i in player) >= ownership_cap[0]
 	    for i in teams_unique:
-	        prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in teams_dict[i] if pos_org[ii]=='QB') >= 1 - (1-teams_vars[i+'@'+str(j)])*5000
-	        prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in teams_dict[i] if (pos_org[ii]=='WR' or pos_org[ii]=='TE')) >= 1 - (1-teams_vars[i+'@'+str(j)])*5000
+	        prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in teams_dict[i] if pos_org[ii]=='QB') >= 1 - (1-teams_vars[i+str(j)])*5000
+	        prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in teams_dict[i] if (pos_org[ii]=='WR' or pos_org[ii]=='TE')) >= 1 - (1-teams_vars[i+str(j)])*5000
 	    for i in Legacy_stacking:
 	        #print(i)
 	        team_here=te[i.player]
 	        if(i.different_team==1):
 	            team_here=opp[team_here]
 	        if(i.type1=='no_more_than'):
-	            print('@')
+	            print('*')
 	            if(i.player_flag==1):
-	                prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in i.players_list) <= i.num_of_players+5000*(1-select[i.player+'@'+str(j)]-flex[i.player+'@'+str(j)])
+	                prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in i.players_list) <= i.num_of_players+5000*(1-select[i.player+str(j)]-flex[i.player+str(j)])
 	            else:
-	                prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in player if(pos_org[ii] in i.player_positions and te[ii]==team_here)) <= i.num_of_players+5000*(1-select[i.player+'@'+str(j)]-flex[i.player+'@'+str(j)])
+	                prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in player if(pos_org[ii] in i.player_positions and te[ii]==team_here)) <= i.num_of_players+5000*(1-select[i.player+str(j)]-flex[i.player+str(j)])
 	        else:
 	            if(i.type1=='no_less_than'):
 	                if(i.player_flag==1):
-	                    prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in i.players_list) >= i.num_of_players-5000*(1-select[i.player+'@'+str(j)]-flex[i.player+'@'+str(j)])
+	                    prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in i.players_list) >= i.num_of_players-5000*(1-select[i.player+str(j)]-flex[i.player+str(j)])
 	                else:
-	                    prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in player if(pos_org[ii] in i.player_positions and te[ii]==team_here)) >= i.num_of_players-5000*(1-select[i.player+'@'+str(j)]-flex[i.player+'@'+str(j)])
+	                    prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in player if(pos_org[ii] in i.player_positions and te[ii]==team_here)) >= i.num_of_players-5000*(1-select[i.player+str(j)]-flex[i.player+str(j)])
 	            else:            
 	                if(i.player_flag==1):
 	                    print(i)
-	                    prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in i.players_list) <= i.num_of_players+5000*(1-select[i.player+'@'+str(j)]-flex[i.player+'@'+str(j)])
-	                    prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in i.players_list) >= i.num_of_players-5000*(1-select[i.player+'@'+str(j)]-flex[i.player+'@'+str(j)])
+	                    prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in i.players_list) <= i.num_of_players+5000*(1-select[i.player+str(j)]-flex[i.player+str(j)])
+	                    prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in i.players_list) >= i.num_of_players-5000*(1-select[i.player+str(j)]-flex[i.player+str(j)])
 	                else:
-	                    prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in player if(pos_org[ii] in i.player_positions and te[ii]==team_here)) >= i.num_of_players-5000*(1-select[i.player+'@'+str(j)]-flex[i.player+'@'+str(j)])
-	                    prob += lpSum(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)] for ii in player if(pos_org[ii] in i.player_positions and te[ii]==team_here)) <= i.num_of_players+5000*(1-select[i.player+'@'+str(j)]-flex[i.player+'@'+str(j)])
+	                    prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in player if(pos_org[ii] in i.player_positions and te[ii]==team_here)) >= i.num_of_players-5000*(1-select[i.player+str(j)]-flex[i.player+str(j)])
+	                    prob += lpSum(select[ii+str(j)]+flex[ii+str(j)] for ii in player if(pos_org[ii] in i.player_positions and te[ii]==team_here)) <= i.num_of_players+5000*(1-select[i.player+str(j)]-flex[i.player+str(j)])
 	    if(flag_disallow==False):
 	        continue
 	    for i,jj in teams_dict.items():
@@ -362,16 +346,26 @@ def here(dictionary):
 	        ans2=0
 	        for ii in jj:
 	            if(pos_org[ii]=='QB'):
-	                ans1+=(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)])
+	                ans1+=(select[ii+str(j)]+flex[ii+str(j)])
 	            if(pos_org[ii]=='TE' or pos_org[ii]=='WR'):
-	                ans2+=(select[ii+'@'+str(j)]+flex[ii+'@'+str(j)])
+	                ans2+=(select[ii+str(j)]+flex[ii+str(j)])
 	        prob += ans2 <= 5000*ans1 
 	#stack={'mini':1,'maxi':2,'players':['Braxton Berrios','Baker Mayfield','Tyler Kroft'],'num_line_ups':2}
 	#for i in range(stack['num_line_ups']):
-	#    prob += lpSum(select[here+'@'+str(i)]+flex[here+'@'+str(i)] for here in stack['players']) <= stack['maxi']
-	#    prob += lpSum(select[here+'@'+str(i)]+flex[here+'@'+str(i)] for here in stack['players']) >= stack['mini']
- 
-	print(prob)
+	#    prob += lpSum(select[here+str(i)]+flex[here+str(i)] for here in stack['players']) <= stack['maxi']
+	#    prob += lpSum(select[here+str(i)]+flex[here+str(i)] for here in stack['players']) >= stack['mini']
+	forcing_flex=optimizer_panel.forcing_flex
+	if(forcing_flex==True):
+	    for j in range(1,num):
+	        for i in player:
+	            prob += select[i+str(j-1)] >= 1-300*(1-flex[i+str(j)])
+	uniqueness=optimizer_panel.uniqueness
+	print("unique=",uniqueness)
+	prob += lpSum(req[i] for i in player) == uniqueness
+	for i in player :
+		prob += (lpSum(select[i+str(j)]+flex[i+str(j)] for j in range(num))) <= 1+(1-req[i])*5000
+		prob += (lpSum(select[i+str(j)]+flex[i+str(j)] for j in range(num))) >= 1-(1-req[i])*5000 
+	#solver = glpk(path=glpk)
 	prob.solve(GUROBI())
 	obj=value(prob.objective)
 	maximum_exp=dict(zip(player,df['max_exp']))
@@ -379,7 +373,7 @@ def here(dictionary):
 	ID=dict(zip(player,df['playerId']))
 	ans_final=[[] for i in range(num)]
 	total_dict=[]
-	flex_play=['' for i in range(num)]
+	flex_play=[]
 	for j in range(num):
 	    salary_here=0
 	    projection_here=0
@@ -390,8 +384,7 @@ def here(dictionary):
 	    for v in prob.variables():
 	        if(v.varValue==1):
 	            x=v.name
-	            #print(x)
-	            if(x[:-len(str(j))-1]+'@'+str(j) != x):
+	            if(x[:-len(str(j))]+str(j) != x):
 	                continue
 	            #print(x)
 	            try : 
@@ -408,25 +401,20 @@ def here(dictionary):
 	                name_here=player_dict[v.name]
 	            except :
 	                name_here=flex_dict[v.name]
-	                flex_play[j]=name_here[:-len(str(j))-1]
-	            #print(name_here, "=",v.varValue,own[name_here.rstrip('@'+str(j))], te[name_here.rstrip('@'+str(j))],pos_org[name_here.rstrip('@'+str(j))])
+	                flex_play.append(name_here[:-len(str(j))])
+	            #print(name_here, "=",v.varValue,own[name_here.rstrip(str(j))], te[name_here.rstrip(str(j))],pos_org[name_here.rstrip(str(j))])
 	            c=0
 	            for i in range(num):
-	                if(v.name[:-len(str(i))-1]+'@'+str(i)==v.name):
+	                if(v.name[:-len(str(i))]+str(i)==v.name):
 	                    c=i
-	            ans_final[j].append(name_here[:-len(str(j))-1])
-	            total_dict.append(name_here[:-len(str(j))-1])
+	            ans_final[j].append(name_here[:-len(str(j))])
+	            total_dict.append(name_here[:-len(str(j))])
 	            salary_here+=salary[name_here]
 	            projection_here+=proj[name_here]
 	            fp_here+=fp[name_here]
-	            owner_ship_pay+=own[name_here[:-len(str(j))-1]]
+	            owner_ship_pay+=own[name_here[:-len(str(j))]]
 	            total_fpts+=final_fp[name_here]
 	    ans_final[j].append((projection_here,salary_here,fp_here,total_fpts,owner_ship_pay))
-	for v in prob.variables():
-		if(v.varValue==1):
-			x=v.name
-			#print(x)
-	    
 	total_dict=set(total_dict)
 	print(total_dict)
 	for i in range(len(ans_final)):
@@ -475,9 +463,3 @@ def here(dictionary):
 		return {"is_optimised":1,"total_players":here,"lineups":here2}
 	else :
 		return {"is_optimised":0,"total_players":[],"lineups":[]}
-@app.post("/items/")
-async def create_item(dictionary: total):
-	me=here(dictionary)
-	return me
-	#except :
-	#	return {"is_optimised":0,"total_players":[],"lineups":[]}
